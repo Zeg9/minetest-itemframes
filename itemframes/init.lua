@@ -15,9 +15,11 @@ facedir[3] = {x=-1,y=0,z=0} --
 
 local remove_item = function(pos)
 	objs = minetest.env:get_objects_inside_radius(pos, .5)
-	for _, obj in ipairs(objs) do
-		if obj:get_luaentity().name == "itemframes:item" then
-			obj:remove()
+	if objs then
+		for _, obj in ipairs(objs) do
+			if obj and obj:get_luaentity() and obj:get_luaentity().name == "itemframes:item" then
+				obj:remove()
+			end
 		end
 	end
 end
@@ -31,7 +33,7 @@ local update_item = function(pos, node)
 		pos.y = pos.y + posad.y*7/16
 		pos.z = pos.z + posad.z*7/16
 		local e = minetest.env:add_entity(pos,"itemframes:item")
-		local name = meta:get_string("item")
+		local name = ItemStack(meta:get_string("item")):get_name()
 		e:set_properties({textures={name}})
 		local yaw = math.pi*2 - node.param2 * math.pi/2
 		e:setyaw(yaw)
@@ -69,8 +71,8 @@ minetest.register_node("itemframes:frame",{
 		local meta = minetest.env:get_meta(pos)
 		if clicker:get_player_name() == meta:get_string("owner") then
 			drop_item(pos,clicker)
-			meta:set_string("item",itemstack:get_name())
-			itemstack:take_item()
+			local s = itemstack:take_item()
+			meta:set_string("item",s:to_string())
 			update_item(pos,node)
 		end
 		return itemstack
@@ -98,3 +100,11 @@ minetest.register_abm({
 	end,
 }) -- This allows items to reappear in frames when chunks are unloaded
 
+minetest.register_craft({
+	output = 'itemframes:frame',
+	recipe = {
+		{'default:stick', 'default:stick', 'default:stick'},
+		{'default:stick', 'default:paper', 'default:stick'},
+		{'default:stick', 'default:stick', 'default:stick'},
+	}
+})
