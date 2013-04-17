@@ -94,8 +94,8 @@ minetest.register_node("itemframes:frame",{
 
 minetest.register_abm({
 	nodenames = {"itemframes:frame"},
-	interval = 1.0,
-	chance = 2,
+	interval = 2.0,
+	chance = 1,
 	action = function(pos, node, active_object_count, active_object_count_wider)
 		update_item(pos,node)
 	end,
