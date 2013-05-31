@@ -1,20 +1,60 @@
+local tmp = {}
+
 minetest.register_entity("itemframes:item",{
 	hp_max = 1,
 	visual="wielditem",
 	visual_size={x=.33,y=.33},
 	collisionbox = {0,0,0,0,0,0},
 	physical=false,
-	textures={"air"}
+	textures={"air"},
+	on_activate = function(self, staticdata)
+		if tmp.nodename ~= nil and tmp.texture ~= nil then
+			self.nodename = tmp.nodename
+			tmp.nodename = nil
+			self.texture = tmp.texture
+			tmp.texture = nil
+		else
+			print("warnninining")
+			print (dump(staticdata))
+			if staticdata ~= nil and staticdata ~= "" then
+				local data = staticdata:split(';')
+				print("deeebuguugug")
+				print(dump(data))
+				if data and data[1] and data[2] then
+					self.nodename = data[1]
+					self.texture = data[2]
+				end
+			end
+		end
+		if self.texture ~= nil then
+			self.object:set_properties({textures={self.texture}})
+		end
+		if self.nodename == "itemframes:pedestal" then
+			self.object:set_properties({automatic_rotate=1})
+		end
+	end,
+	get_staticdata = function(self)
+		if self.nodename ~= nil and self.texture ~= nil then
+			return self.nodename .. ';' .. self.texture
+		end
+		return ""
+	end,
 })
 
-local facedir = {}
-facedir[0] = {x=0,y=0,z=1} --
-facedir[1] = {x=1,y=0,z=0} --
-facedir[2] = {x=0,y=0,z=-1} --
-facedir[3] = {x=-1,y=0,z=0} --
 
-local remove_item = function(pos)
-	objs = minetest.env:get_objects_inside_radius(pos, .5)
+local facedir = {}
+facedir[0] = {x=0,y=0,z=1}
+facedir[1] = {x=1,y=0,z=0}
+facedir[2] = {x=0,y=0,z=-1}
+facedir[3] = {x=-1,y=0,z=0}
+
+local remove_item = function(pos, node)
+	local objs = nil
+	if node.name == "itemframes:frame" then
+		objs = minetest.env:get_objects_inside_radius(pos, .5)
+	elseif node.name == "itemframes:pedestal" then
+		objs = minetest.env:get_objects_inside_radius({x=pos.x,y=pos.y+1,z=pos.z}, .5)
+	end
 	if objs then
 		for _, obj in ipairs(objs) do
 			if obj and obj:get_luaentity() and obj:get_luaentity().name == "itemframes:item" then
@@ -25,28 +65,38 @@ local remove_item = function(pos)
 end
 
 local update_item = function(pos, node)
-	remove_item(pos)
+	remove_item(pos, node)
 	local meta = minetest.env:get_meta(pos)
 	if meta:get_string("item") ~= "" then
-		posad = facedir[node.param2]
-		pos.x = pos.x + posad.x*6.5/16
-		pos.y = pos.y + posad.y*6.5/16
-		pos.z = pos.z + posad.z*6.5/16
+		if node.name == "itemframes:frame" then
+			local posad = facedir[node.param2]
+			pos.x = pos.x + posad.x*6.5/16
+			pos.y = pos.y + posad.y*6.5/16
+			pos.z = pos.z + posad.z*6.5/16
+		elseif node.name == "itemframes:pedestal" then
+			pos.y = pos.y + 12/16+.33
+		end
+		tmp.nodename = node.name
+		tmp.texture = ItemStack(meta:get_string("item")):get_name()
 		local e = minetest.env:add_entity(pos,"itemframes:item")
-		local name = ItemStack(meta:get_string("item")):get_name()
-		e:set_properties({textures={name}})
-		local yaw = math.pi*2 - node.param2 * math.pi/2
-		e:setyaw(yaw)
+		if node.name == "itemframes:frame" then
+			local yaw = math.pi*2 - node.param2 * math.pi/2
+			e:setyaw(yaw)
+		end
 	end
 end
 
-local drop_item = function(pos)
+local drop_item = function(pos, node)
 	local meta = minetest.env:get_meta(pos)
 	if meta:get_string("item") ~= "" then
-		minetest.env:add_item(pos, meta:get_string("item"))
+		if node.name == "itemframes:frame" then
+			minetest.env:add_item(pos, meta:get_string("item"))
+		elseif node.name == "itemframes:pedestal" then
+			minetest.env:add_item({x=pos.x,y=pos.y+1,z=pos.z}, meta:get_string("item"))
+		end
 		meta:set_string("item","")
 	end
-	remove_item(pos)
+	remove_item(pos, node)
 end
 
 minetest.register_node("itemframes:frame",{
@@ -71,7 +121,7 @@ minetest.register_node("itemframes:frame",{
 	on_rightclick = function(pos, node, clicker, itemstack)
 		local meta = minetest.env:get_meta(pos)
 		if clicker:get_player_name() == meta:get_string("owner") then
-			drop_item(pos,clicker)
+			drop_item(pos,node)
 			local s = itemstack:take_item()
 			meta:set_string("item",s:to_string())
 			update_item(pos,node)
@@ -81,7 +131,7 @@ minetest.register_node("itemframes:frame",{
 	on_punch = function(pos,node,puncher)
 		local meta = minetest.env:get_meta(pos)
 		if puncher:get_player_name() == meta:get_string("owner") then
-			drop_item(pos)
+			drop_item(pos, node)
 		end
 	end,
 	can_dig = function(pos,player)
@@ -92,14 +142,47 @@ minetest.register_node("itemframes:frame",{
 })
 
 
-minetest.register_abm({
-	nodenames = {"itemframes:frame"},
-	interval = 2.0,
-	chance = 1,
-	action = function(pos, node, active_object_count, active_object_count_wider)
-		update_item(pos,node)
+minetest.register_node("itemframes:pedestal",{
+	description = "Pedestal",
+	drawtype = "nodebox",
+	node_box = { type = "fixed", fixed = {
+		{-7/16, -8/16, -7/16, 7/16, -7/16, 7/16}, -- bottom plate
+		{-6/16, -7/16, -6/16, 6/16, -6/16, 6/16}, -- bottom plate (upper)
+		{-0.25, -6/16, -0.25, 0.25, 11/16, 0.25}, -- pillar
+		{-7/16, 11/16, -7/16, 7/16, 12/16, 7/16}, -- top plate
+	} },
+	--selection_box = { type = "fixed", fixed = {-7/16, -0.5, -7/16, 7/16, 12/16, 7/16} },
+	tiles = {"itemframes_pedestal.png"},
+	paramtype = "light",
+	groups = { cracky=3 },
+	sounds = default.node_sound_defaults(),
+	after_place_node = function(pos, placer, itemstack)
+		local meta = minetest.env:get_meta(pos)
+		meta:set_string("owner",placer:get_player_name())
+		meta:set_string("infotext","Pedestal (owned by "..placer:get_player_name()..")")
 	end,
-}) -- This allows items to reappear in frames when chunks are unloaded
+	on_rightclick = function(pos, node, clicker, itemstack)
+		local meta = minetest.env:get_meta(pos)
+		if clicker:get_player_name() == meta:get_string("owner") then
+			drop_item(pos,node)
+			local s = itemstack:take_item()
+			meta:set_string("item",s:to_string())
+			update_item(pos,node)
+		end
+		return itemstack
+	end,
+	on_punch = function(pos,node,puncher)
+		local meta = minetest.env:get_meta(pos)
+		if puncher:get_player_name() == meta:get_string("owner") then
+			drop_item(pos,node)
+		end
+	end,
+	can_dig = function(pos,player)
+		
+		local meta = minetest.env:get_meta(pos)
+		return player:get_player_name() == meta:get_string("owner")
+	end,
+})
 
 minetest.register_craft({
 	output = 'itemframes:frame',
