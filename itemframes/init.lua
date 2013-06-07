@@ -119,6 +119,7 @@ minetest.register_node("itemframes:frame",{
 		meta:set_string("infotext","Item frame (owned by "..placer:get_player_name()..")")
 	end,
 	on_rightclick = function(pos, node, clicker, itemstack)
+		if not itemstack then return end
 		local meta = minetest.env:get_meta(pos)
 		if clicker:get_player_name() == meta:get_string("owner") then
 			drop_item(pos,node)
@@ -162,6 +163,7 @@ minetest.register_node("itemframes:pedestal",{
 		meta:set_string("infotext","Pedestal (owned by "..placer:get_player_name()..")")
 	end,
 	on_rightclick = function(pos, node, clicker, itemstack)
+		if not itemstack then return end
 		local meta = minetest.env:get_meta(pos)
 		if clicker:get_player_name() == meta:get_string("owner") then
 			drop_item(pos,node)
@@ -190,5 +192,13 @@ minetest.register_craft({
 		{'default:stick', 'default:stick', 'default:stick'},
 		{'default:stick', 'default:paper', 'default:stick'},
 		{'default:stick', 'default:stick', 'default:stick'},
+	}
+})
+minetest.register_craft({
+	output = 'itemframes:pedestal',
+	recipe = {
+		{'default:stone', 'default:stone', 'default:stone'},
+		{'', 'default:stone', ''},
+		{'default:stone', 'default:stone', 'default:stone'},
 	}
 })
