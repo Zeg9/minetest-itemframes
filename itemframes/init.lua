@@ -14,12 +14,8 @@ minetest.register_entity("itemframes:item",{
 			self.texture = tmp.texture
 			tmp.texture = nil
 		else
-			print("warnninining")
-			print (dump(staticdata))
 			if staticdata ~= nil and staticdata ~= "" then
 				local data = staticdata:split(';')
-				print("deeebuguugug")
-				print(dump(data))
 				if data and data[1] and data[2] then
 					self.nodename = data[1]
 					self.texture = data[2]
