@@ -66,6 +66,7 @@ local update_item = function(pos, node)
 	if meta:get_string("item") ~= "" then
 		if node.name == "itemframes:frame" then
 			local posad = facedir[node.param2]
+			if not posad then return end
 			pos.x = pos.x + posad.x*6.5/16
 			pos.y = pos.y + posad.y*6.5/16
 			pos.z = pos.z + posad.z*6.5/16
@@ -181,6 +182,21 @@ minetest.register_node("itemframes:pedestal",{
 		return player:get_player_name() == meta:get_string("owner")
 	end,
 })
+
+-- automatically restore entities lost from frames/pedestals
+-- due to /clearobjects or similar
+
+minetest.register_abm({
+	nodenames = { "itemframes:frame", "itemframes:pedestal" },
+	interval = 15,
+	chance = 1,
+	action = function(pos, node, active_object_count, active_object_count_wider)
+		if #minetest.get_objects_inside_radius(pos, 0.5) > 0 then return end
+		update_item(pos, node)
+	end
+})
+
+-- crafts
 
 minetest.register_craft({
 	output = 'itemframes:frame',
